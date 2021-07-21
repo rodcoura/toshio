@@ -4,17 +4,11 @@
     If you have problems understanding any parts of the code,
     go ahead and experiment with functions in the playground.py file.
 """
-
-import os
 import argparse
 import shutil
 import time
-
-
-import numpy as np
-import torch
 import cv2 as cv
-
+import json
 
 import utils.utils as utils
 from utils.constants import *
@@ -65,7 +59,7 @@ def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
     input_tensor.data = torch.max(torch.min(input_tensor, UPPER_IMAGE_BOUND), LOWER_IMAGE_BOUND)
 
 
-def deep_dream_static_image(config, img):
+def deep_dream_static_image(config, img=None):
     model = utils.fetch_and_prepare_model(config['model_name'], config['pretrained_weights'], DEVICE)
     try:
         layer_ids_to_use = [model.layer_names.index(layer_name) for layer_name in config['layers_to_use']]
@@ -190,11 +184,17 @@ num_to_VGG_Experimental_layer = {
 }
 
 
-def Toshio(input_image, img_width, pyramid_size, layer):
+def id_to_img(img_id):
+    f = open("utils/id_to_image.json", "r")
+    dict = json.load(f)
+    return dict[img_id]
+
+
+def Toshio(img_id, img_width, pyramid_size, layer):
     config = {}
 
     # parameters exposed:
-    config["input"] = ""
+    config["input"] = id_to_img(img_id)
     config["img_width"] = img_width
     config["pyramid_size"] = pyramid_size
     config["layers_to_use"] = [num_to_VGG_Experimental_layer[layer]]
@@ -220,7 +220,7 @@ def Toshio(input_image, img_width, pyramid_size, layer):
     config['input_name'] = os.path.basename(config['input'])
 
     print('Dreaming started!')
-    img = deep_dream_static_image(config, img=input_image)  # img=None -> will be loaded inside of deep_dream_static_image
+    img = deep_dream_static_image(config)  # img=None -> will be loaded inside of deep_dream_static_image
     return img
 
 

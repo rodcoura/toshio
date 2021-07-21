@@ -25,7 +25,7 @@ from .constants import *
 def load_image(img_path, target_shape=None):
     if not os.path.exists(img_path):
         raise Exception(f'Path does not exist: {img_path}')
-    img = cv.imread(img_path)[:, :, ::-1]  # [:, :, ::-1] converts BGR (opencv format...) into RGB
+    img = cv.imread(img_path, cv.IMREAD_COLOR)[:, :, ::-1]  # [:, :, ::-1] converts BGR (opencv format...) into RGB
 
     if target_shape is not None:  # resize section
         if isinstance(target_shape, int) and target_shape != -1:  # scalar -> implicitly setting the width
