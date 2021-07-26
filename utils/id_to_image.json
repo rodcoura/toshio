@@ -1,3 +1,17 @@
 {"cristo": "input/1.jpg",
-"cat": "input/2.jpg"
+"cat": "input/2.jpg",
+"bitcoin" : "input/bitcoin.jpg",
+  "eth": "input/eth.png",
+  "eth_style": "input/eth_style.png",
+  "faces1": "input/faces1.jpg",
+  "eth_ret": "input/5.jfif",
+  "eth_clouds": "input/6.jfif",
+  "eth_clouds_cromo": "input/7.jfif",
+  "eth_clouds_vidro": "input/8.jfif",
+  "eth_clouds_ladrilho": "input/9.jfif",
+  "eth_clouds_vitral": "input/10.jfif",
+  "eth_papel": "input/11.jfif",
+  "eth_papel_marola": "input/12.jfif",
+  "eth_papel_ladrilho": "input/13.jfif",
+  "eth_clouds_radialblur_glow": "input/14.jfif"
 }

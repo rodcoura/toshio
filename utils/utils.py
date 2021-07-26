@@ -22,12 +22,12 @@ from .constants import *
 # Image manipulation util functions
 #
 
-def load_image(img_path, target_shape=None):
+def load_image(img_path, target_shape=0):
     if not os.path.exists(img_path):
         raise Exception(f'Path does not exist: {img_path}')
     img = cv.imread(img_path, cv.IMREAD_COLOR)[:, :, ::-1]  # [:, :, ::-1] converts BGR (opencv format...) into RGB
 
-    if target_shape is not None:  # resize section
+    if target_shape != 0:   # resize section
         if isinstance(target_shape, int) and target_shape != -1:  # scalar -> implicitly setting the width
             current_height, current_width = img.shape[:2]
             new_width = target_shape
@@ -36,6 +36,7 @@ def load_image(img_path, target_shape=None):
         else:  # set both dimensions to target shape
             img = cv.resize(img, (target_shape[1], target_shape[0]), interpolation=cv.INTER_CUBIC)
 
+
     # this need to go after resizing - otherwise cv.resize will push values outside of [0,1] range
     img = img.astype(np.float32)  # convert from uint8 to float32
     img /= 255.0  # get to [0, 1] range
@@ -43,7 +44,7 @@ def load_image(img_path, target_shape=None):
 
 
 def adjust_image(img, target_shape=0):
-    img = np.array(img)
+    img = np.array(img.convert("RGB"))
     if target_shape != 0:  # resize section
         if isinstance(target_shape, int) and target_shape != -1:  # scalar -> implicitly setting the width
             current_height, current_width = img.shape[:2]

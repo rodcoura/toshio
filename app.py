@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from PIL import Image
 from io import BytesIO
 import base64
-from toshio import Toshio
+from toshio import run_toshio
 import skimage
 
 
@@ -33,9 +33,12 @@ def style_transfer():
         img_id = json['img_id']
         img_width = int(json['img_width'])
         pyramid_size = int(json['pyramid_size'])
-        layer = int(json['layer'])
+        layers = json['layer']
+        peril_noise = int(json['peril_noise'])
+        cmap = str(json['cmap'])
+        cmap_r = int(json['cmap_r'])
 
-        painting = Toshio(img_id, img_width, pyramid_size, layer)
+        painting = run_toshio(img_id, img_width, pyramid_size, layers, cmap, cmap_r, peril_noise)
         painting = skimage.util.img_as_ubyte(painting)
         img = Image.fromarray(painting)
         out_base64 = to_base64(img, 'png')

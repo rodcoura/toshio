@@ -7,13 +7,24 @@
 import argparse
 import shutil
 import time
+
+import cv2
 import cv2 as cv
 import json
+
+import skimage
 
 import utils.utils as utils
 from utils.constants import *
 import utils.video_utils as video_utils
-
+import tspArt.TSPArt as TspArt
+from kde_art import plot_kde
+from PIL import Image, ImageEnhance
+import cmapy
+from colour import Color
+import matplotlib.colors as clr
+import noise
+from perlin_numpy import (generate_fractal_noise_3d, generate_perlin_noise_3d, generate_fractal_noise_2d, generate_perlin_noise_2d)
 
 # loss.backward(layer) <- original implementation did it like this it's equivalent to MSE(reduction='sum')/2
 def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
@@ -59,6 +70,35 @@ def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
     input_tensor.data = torch.max(torch.min(input_tensor, UPPER_IMAGE_BOUND), LOWER_IMAGE_BOUND)
 
 
+def perlin_noise(img_path, res, octaves, target_shape=0):
+    if not os.path.exists(img_path):
+        raise Exception(f'Path does not exist: {img_path}')
+    img = cv.imread(img_path, cv.IMREAD_COLOR)[:, :, ::-1]  # [:, :, ::-1] converts BGR (opencv format...) into RGB
+
+    if target_shape != 0:  # resize section
+        if isinstance(target_shape, int) and target_shape != -1:  # scalar -> implicitly setting the width
+            current_height, current_width = img.shape[:2]
+            new_width = target_shape
+            new_height = int(current_height * (new_width / current_width))
+            img = cv.resize(img, (new_width, new_height), interpolation=cv.INTER_CUBIC)
+        else:  # set both dimensions to target shape
+            img = cv.resize(img, (target_shape[1], target_shape[0]), interpolation=cv.INTER_CUBIC)
+
+    enhancer = ImageEnhance.Contrast(Image.fromarray(img))
+    img = enhancer.enhance(2)
+    img = np.array(img)
+
+    noise = generate_fractal_noise_2d((img.shape[0], img.shape[1]), res, octaves)
+    noise = np.expand_dims(noise, axis=-1)
+
+    img_noise = np.add(img/255.0, np.concatenate([noise, noise, noise], axis=2).squeeze())
+    img = (img_noise - np.min(img_noise)) / (np.max(img_noise) - np.min(img_noise)) # get to [0, 1] range
+
+    # this need to go after resizing - otherwise cv.resize will push values outside of [0,1] range
+    img = img.astype(np.float32)  # convert from uint8 to float32
+    return img
+
+
 def deep_dream_static_image(config, img=None):
     model = utils.fetch_and_prepare_model(config['model_name'], config['pretrained_weights'], DEVICE)
     try:
@@ -70,13 +110,21 @@ def deep_dream_static_image(config, img=None):
 
     if img is None:  # load either the provided image or start from a pure noise image
         img_path = utils.parse_input_file(config['input'])
-        # load a numpy, [0, 1] range, channel-last, RGB image
-        img = utils.load_image(img_path, target_shape=config['img_width'])
+        if config["use_kde"]:
+            kde_output = f"data/out-images/{config['seed']}-kde_output.png"
+            plot_kde(img_path, bw=0.1, basewidth=config["basewidth"], file_out=kde_output)
+            img = Image.open(kde_output)
+            img = utils.adjust_image(img, target_shape=config['img_width'])
+        if config["use_perlin"]:
+            img = perlin_noise(img_path, (config["perlin_res"], config["perlin_res"]), 5, target_shape=config['img_width'])
+            img2 = skimage.util.img_as_ubyte(img)
+            #Image.fromarray(img2).save(f"data/out-images/{config['seed']}-perilnoise.png")
+        else:
+            # load a numpy, [0, 1] range, channel-last, RGB image
+            img = utils.load_image(img_path, target_shape=config['img_width'])
         if config['use_noise']:
             shape = img.shape
             img = np.random.uniform(low=0.0, high=1.0, size=shape).astype(np.float32)
-    else:
-        img = utils.adjust_image(img, target_shape=config['img_width'])
 
     img = utils.pre_process_numpy_img(img)
     base_shape = img.shape[:-1]  # save initial height and width
@@ -190,14 +238,53 @@ def id_to_img(img_id):
     return dict[img_id]
 
 
-def Toshio(img_id, img_width, pyramid_size, layer):
+def gradient_map(img, palette):
+    cmap = clr.LinearSegmentedColormap.from_list('', palette)
+    cores = cmap(np.linspace(0, 1, 256))
+    colors_cmap = np.expand_dims(cores, axis=1)
+
+    colors_cmap = skimage.util.img_as_ubyte(colors_cmap)
+    image_cm = cv2.applyColorMap(np.array(img), colors_cmap[:,:,:3])
+
+    return image_cm
+
+
+def get_palette(name, reversed):
+    colors = []
+    if name == "1":
+        colors = ["#FFFFFF", "#c4466c", "#211829"]
+    elif name == "2":
+        colors = ["#EAE2B7", "#FCBF49", "#F77F00", "#D62828","#003049"]
+    elif name == "3":
+        colors = ["#F07167","#FED9B7","#FDFCDC", "#00AFB9", "#0081A7"]
+    elif name == "4":
+        colors = ["#FFBA08","#FAA307","#F48C06","#E85D04","#DC2F02","#D00000","#9D0208", "#6A040F","#370617","#03071E"]
+    elif name == "5":
+        colors = ["#EF476F", "#FFD166", "#06D6A0", "#118AB2", "#073B4C"]
+    elif name == "6":
+        colors = ["#F29E4C","#F1C453","#EFEA5A","#B9E769","#83E377","#16DB93","#0DB39E","#048BA8","#2C699A","#54478C"]
+    if reversed:
+        colors.reverse()
+        return colors
+    else:
+        return colors
+
+
+def run_toshio(img_id, img_width, pyramid_size, layers, cmap, cmap_r, peril_noise):
     config = {}
 
     # parameters exposed:
     config["input"] = id_to_img(img_id)
     config["img_width"] = img_width
     config["pyramid_size"] = pyramid_size
-    config["layers_to_use"] = [num_to_VGG_Experimental_layer[layer]]
+    config["layers_to_use"] = [num_to_VGG_Experimental_layer[i] for i in layers]
+    config["use_perlin"] = True
+    config["use_kde"] = False
+    config["perlin_res"] = peril_noise
+    config["cmap"] = cmap
+    config["cmap_r"] = cmap_r
+
+    config["seed"] = np.random.randint(1, 1000000)
 
     # Add other params:
     config["model_name"] = SupportedModels.VGG16_EXPERIMENTAL.name
@@ -219,9 +306,30 @@ def Toshio(img_id, img_width, pyramid_size, layer):
     config['dump_dir'] = os.path.join(config['dump_dir'], f'{config["model_name"]}_{config["pretrained_weights"]}')
     config['input_name'] = os.path.basename(config['input'])
 
+    img_cm = Toshio(config)
+
+    return img_cm
+
+
+def Toshio(config):
     print('Dreaming started!')
-    img = deep_dream_static_image(config)  # img=None -> will be loaded inside of deep_dream_static_image
-    return img
+    img = deep_dream_static_image(config)
+    img = skimage.util.img_as_ubyte(img)  # img=None -> will be loaded inside of deep_dream_static_image
+
+    img = Image.fromarray(img)
+    #img.save(f"data/out-images/{config['seed']}-deepdream.png")
+
+    # image brightness enhancer
+    enhancer = ImageEnhance.Contrast(img)
+    im_output = enhancer.enhance(1.5)
+    #im_output.save(f"data/out-images/{config['seed']}-deepdream_contrast.png")
+    palette = get_palette(config["cmap"], config["cmap_r"])
+    image_cm = gradient_map(img, palette)
+
+    image_cm = skimage.util.img_as_ubyte(image_cm)
+    image_cm = Image.fromarray(image_cm)
+
+    return image_cm
 
 
 if __name__ == "__main__":
@@ -237,6 +345,8 @@ if __name__ == "__main__":
                         help="Neural network (model) to use for dreaming", default=SupportedModels.VGG16_EXPERIMENTAL.name)
     parser.add_argument("--pretrained_weights", choices=[pw.name for pw in SupportedPretrainedWeights],
                         help="Pretrained weights to use for the above model", default=SupportedPretrainedWeights.IMAGENET.name)
+                        
+    parser.add_argument("--cmap", type=str, help="Color map to be aplied after dream", default='RdPu')
 
     # Main params for experimentation (especially pyramid_size and pyramid_ratio)
     parser.add_argument("--pyramid_size", type=int, help="Number of images in an image pyramid", default=4)
@@ -260,6 +370,12 @@ if __name__ == "__main__":
     parser.add_argument("--spatial_shift_size", type=int, help='Number of pixels to randomly shift image before grad ascent', default=32)
     parser.add_argument("--smoothing_coefficient", type=float, help='Directly controls standard deviation for gradient smoothing', default=0.5)
     parser.add_argument("--use_noise", action='store_true', help="Use noise as a starting point instead of input image (default False)")
+    parser.add_argument("--use_kde", action='store_true',
+                        help="(default False)")
+    parser.add_argument("--use_perlin", action='store_true',
+                        help="(default False)")
+    parser.add_argument("--perlin_res", type=int, help="", default=4)
+
     args = parser.parse_args()
 
     # Wrapping configuration into a dictionary
@@ -269,18 +385,9 @@ if __name__ == "__main__":
     config['dump_dir'] = OUT_VIDEOS_PATH if config['create_ouroboros'] else OUT_IMAGES_PATH
     config['dump_dir'] = os.path.join(config['dump_dir'], f'{config["model_name"]}_{config["pretrained_weights"]}')
     config['input_name'] = os.path.basename(config['input'])
+    
+    config["seed"] = np.random.randint(1, 1000000)
 
-    # Create Ouroboros video (feeding neural network's output to it's input)
-    if config['create_ouroboros']:
-        deep_dream_video_ouroboros(config)
+    img_cm = Toshio(config)
 
-    # Create a blended DeepDream video
-    elif any([config['input_name'].lower().endswith(video_ext) for video_ext in SUPPORTED_VIDEO_FORMATS]):  # only support mp4 atm
-        deep_dream_video(config)
-
-    else:  # Create a static DeepDream image
-        print('Dreaming started!')
-        img = deep_dream_static_image(config, img=None)  # img=None -> will be loaded inside of deep_dream_static_image
-        dump_path = utils.save_and_maybe_display_image(config, img)
-        print(f'Saved DeepDream static image to: {os.path.relpath(dump_path)}\n')
-
+    img_cm.save(f"data/out-images/{config['seed']}-deepfinal.png")
