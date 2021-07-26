@@ -10,4 +10,4 @@ flask
 gunicorn
 scikit-image
 seaborn
--e git+https://github.com/pvigier/perlin-numpy
+-e git+https://github.com/pvigier/perlin-numpy#egg=perlin-numpy
