@@ -1,6 +1,3 @@
-ffmpeg 
-libsm6 
-libxext6
 --find-links https://download.pytorch.org/whl/torch_stable.html
 torch==1.7.1+cpu
 torchvision==0.8.2+cpu
@@ -8,6 +5,7 @@ numpy
 matplotlib
 scipy
 opencv-python
+opencv-contrib-python
 imageio
 flask
 gunicorn
