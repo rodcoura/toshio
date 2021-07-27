@@ -14,6 +14,7 @@ cmap_r = 0
 peril_noise = 16  # 2, 4, 8, 16
 
 start = time.time()
+#'https://toshiopaintings.herokuapp.com/
 resp = requests.post('http://127.0.0.1:5000/',
                      json={"img_id": image_id, "img_width": img_width, "pyramid_size": pyramid_size,
                            "layer": layer, "cmap": cmap, "cmap_r": cmap_r, "peril_noise": peril_noise})
