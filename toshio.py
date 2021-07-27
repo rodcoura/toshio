@@ -19,11 +19,9 @@ from utils.constants import *
 import utils.video_utils as video_utils
 from kde_art import plot_kde
 from PIL import Image, ImageEnhance
-import cmapy
-from colour import Color
 import matplotlib.colors as clr
-import noise
-from perlin_numpy import (generate_fractal_noise_3d, generate_perlin_noise_3d, generate_fractal_noise_2d, generate_perlin_noise_2d)
+
+from perlin_numpy import (generate_fractal_noise_2d)
 
 # loss.backward(layer) <- original implementation did it like this it's equivalent to MSE(reduction='sum')/2
 def gradient_ascent(config, model, input_tensor, layer_ids_to_use, iteration):
