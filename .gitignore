@@ -5,8 +5,6 @@ __pycache__
 # Data directory
 data/
 
-# Pretrained weights binaries
-models/binaries
 
 # Jupyter notebook checkpoints
 .ipynb_checkpoints/
