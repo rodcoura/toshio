@@ -5,7 +5,7 @@ numpy
 matplotlib
 scipy
 opencv-python-headless 
-opencv-contrib-python
+opencv-contrib-python-headless
 imageio
 flask
 gunicorn
