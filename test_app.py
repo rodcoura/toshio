@@ -7,11 +7,11 @@ import os
 path = Path(__file__).parent
 image_id = 'eth'
 img_width = 1024
-pyramid_size = 3  # de 2 a 5
-layer = [2, 3, 5]  # de 1 a 8 ou a combinação disso
-cmap = 4  # de 1 a n
+pyramid_size = 5  # de 2 a 5
+layer = [2, 5, 8]  # de 1 a 8 ou a combinação disso
+cmap = 2  # de 1 a 6
 cmap_r = 0
-peril_noise = 8  # 2, 4, 8, 16
+peril_noise = 16  # 2, 4, 8, 16
 
 start = time.time()
 resp = requests.post('http://127.0.0.1:5000/',
@@ -23,7 +23,7 @@ if resp.ok:
     print("Great! A stylized image was created!")
 
     img = from_base64(img_str)
-    img.save(os.path.join(path, 'deepfinal.png'))
+    img.save(os.path.join(path, 'deepfinal_3.png'))
 else:
     print(resp.status_code)
     print(f"p-{pyramid_size} - l-{layer} - pn-{peril_noise}")

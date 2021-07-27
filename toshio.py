@@ -17,7 +17,6 @@ import skimage
 import utils.utils as utils
 from utils.constants import *
 import utils.video_utils as video_utils
-import tspArt.TSPArt as TspArt
 from kde_art import plot_kde
 from PIL import Image, ImageEnhance
 import cmapy
@@ -85,18 +84,21 @@ def perlin_noise(img_path, res, octaves, target_shape=0):
             img = cv.resize(img, (target_shape[1], target_shape[0]), interpolation=cv.INTER_CUBIC)
 
     enhancer = ImageEnhance.Contrast(Image.fromarray(img))
-    img = enhancer.enhance(2)
-    img = np.array(img)
+    img = enhancer.enhance(1.5)
+    img = (np.array(img)/255.0) * 1.4
 
     noise = generate_fractal_noise_2d((img.shape[0], img.shape[1]), res, octaves)
     noise = np.expand_dims(noise, axis=-1)
+    noise = (noise - np.min(noise)) / (np.max(noise) - np.min(noise))
 
-    img_noise = np.add(img/255.0, np.concatenate([noise, noise, noise], axis=2).squeeze())
-    img = (img_noise - np.min(img_noise)) / (np.max(img_noise) - np.min(img_noise)) # get to [0, 1] range
+    img_noise = np.concatenate([noise, noise, noise], axis=2).squeeze()
+
+    img_result = cv2.addWeighted(img_noise, 0.8, img, 1, 0)
+    img_result = (img_result - np.min(img_result)) / (np.max(img_result) - np.min(img_result)) # get to [0, 1] range
 
     # this need to go after resizing - otherwise cv.resize will push values outside of [0,1] range
-    img = img.astype(np.float32)  # convert from uint8 to float32
-    return img
+    img_result = img_result.astype(np.float32)  # convert from uint8 to float32
+    return img_result
 
 
 def deep_dream_static_image(config, img=None):
@@ -117,7 +119,7 @@ def deep_dream_static_image(config, img=None):
             img = utils.adjust_image(img, target_shape=config['img_width'])
         if config["use_perlin"]:
             img = perlin_noise(img_path, (config["perlin_res"], config["perlin_res"]), 5, target_shape=config['img_width'])
-            img2 = skimage.util.img_as_ubyte(img)
+            #img2 = skimage.util.img_as_ubyte(img)
             #Image.fromarray(img2).save(f"data/out-images/{config['seed']}-perilnoise.png")
         else:
             # load a numpy, [0, 1] range, channel-last, RGB image
@@ -311,6 +313,21 @@ def run_toshio(img_id, img_width, pyramid_size, layers, cmap, cmap_r, peril_nois
     return img_cm
 
 
+def upsampling(img):
+    sr = cv2.dnn_superres.DnnSuperResImpl_create()
+
+    path = "utils/ESPCN_x4.pb"
+
+    sr.readModel(path)
+
+    sr.setModel("espcn", 4)
+
+    result = sr.upsample(img)
+    #result = sr.upsample(result)
+    #result = sr.upsample(result)
+
+    return result
+
 def Toshio(config):
     print('Dreaming started!')
     img = deep_dream_static_image(config)
@@ -324,9 +341,10 @@ def Toshio(config):
     im_output = enhancer.enhance(1.5)
     #im_output.save(f"data/out-images/{config['seed']}-deepdream_contrast.png")
     palette = get_palette(config["cmap"], config["cmap_r"])
-    image_cm = gradient_map(img, palette)
+    image_cm = gradient_map(im_output, palette)
 
     image_cm = skimage.util.img_as_ubyte(image_cm)
+    image_cm = upsampling(image_cm)
     image_cm = Image.fromarray(image_cm)
 
     return image_cm
