@@ -263,6 +263,12 @@ def get_palette(name, reversed):
         colors = ["#EF476F", "#FFD166", "#06D6A0", "#118AB2", "#073B4C"]
     elif name == "6":
         colors = ["#F29E4C","#F1C453","#EFEA5A","#B9E769","#83E377","#16DB93","#0DB39E","#048BA8","#2C699A","#54478C"]
+    elif name == "7":
+        colors = ["#E63946", "#f1faee", "#a8dadc", "#457b9d", "#1d3557"]
+    elif name == "8":
+        colors = ["#22577a", "#38a3a5", "#57cc99", "#80ed99", "#c7f9cc"]
+    elif name == "9":
+        colors = ["#ffbe0b", "#fb5607", "#ff006e", "#8338ec", "#3a86ff"]
     if reversed:
         colors.reverse()
         return colors

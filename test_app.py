@@ -5,13 +5,13 @@ from app import from_base64
 import os
 
 path = Path(__file__).parent
-image_id = 'eth'
-img_width = 1024
+image_id = 'eth'  # opção unica por enquanto
+img_width = 512  # 512 ou 1024
 pyramid_size = 5  # de 2 a 5
 layer = [2, 5, 8]  # de 1 a 8 ou a combinação disso
-cmap = 2  # de 1 a 6
-cmap_r = 0
-peril_noise = 16  # 2, 4, 8, 16
+cmap = 8  # de 1 a 9
+cmap_r = 1  # 0 ou 1
+peril_noise = 16  # 2, 4, 8 ou 16
 
 start = time.time()
 #'https://toshiopaintings.herokuapp.com/
@@ -24,7 +24,7 @@ if resp.ok:
     print("Great! A stylized image was created!")
 
     img = from_base64(img_str)
-    img.save(os.path.join(path, 'deepfinal_3.png'))
+    img.save(os.path.join(path, 'deepfinal_8_r.png'))
 else:
     print(resp.status_code)
     print(f"p-{pyramid_size} - l-{layer} - pn-{peril_noise}")
