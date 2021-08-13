@@ -20,6 +20,7 @@ import utils.video_utils as video_utils
 from kde_art import plot_kde
 from PIL import Image, ImageEnhance
 import matplotlib.colors as clr
+from pathlib import Path
 
 from perlin_numpy import (generate_fractal_noise_2d)
 
@@ -108,8 +109,9 @@ def deep_dream_static_image(config, img=None):
         print(f'Available layers for model {config["model_name"]} are {model.layer_names}.')
         return
 
-    if img is None:  # load either the provided image or start from a pure noise image
-        img_path = utils.parse_input_file(config['input'])
+    if img is None: # load either the provided image or start from a pure noise image
+        path = os.path.join(Path(__file__).parent, config['input'])
+        img_path = utils.parse_input_file(path)
         if config["use_kde"]:
             kde_output = f"data/out-images/{config['seed']}-kde_output.png"
             plot_kde(img_path, bw=0.1, basewidth=config["basewidth"], file_out=kde_output)
