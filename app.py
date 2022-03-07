@@ -1,10 +1,10 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, response, make_response
 from PIL import Image
 from io import BytesIO
 import base64
 from toshio import run_toshio
 import skimage
-
+from datetime import datetime
 
 def from_base64(base64_str):
     plain_text = str(base64_str).split(",")[1]
@@ -28,26 +28,27 @@ app = Flask(__name__)
 
 @app.route('/', methods=['GET', 'POST'])
 def style_transfer():
-    if request.method == 'POST':
-        json = request.json
-        img_id = "eth"
-        img_width = int(json['img_width'])
-        pyramid_size = int(json['pyramid_size'])
-        layers = json['layer']
-        peril_noise = int(json['peril_noise'])
-        cmap = str(json['cmap'])
-        cmap_r = int(json['cmap_r'])
+    args = request.args.to_dict()
+    img_id = "eth"
+    img_width = int(args['img_width'])
+    pyramid_size = int(args['pyramid_size'])
+    layers = args['layer'].split(',')
+    peril_noise = int(args['peril_noise'])
+    cmap = str(args['cmap'])
+    cmap_r = int(args['cmap_r'])
 
-        painting = run_toshio(img_id, img_width, pyramid_size, layers, cmap, cmap_r, peril_noise)
-        painting = skimage.util.img_as_ubyte(painting)
-        img = Image.fromarray(painting)
-        out_base64 = to_base64(img, 'png')
+    painting = run_toshio(img_id, img_width, pyramid_size, layers, cmap, cmap_r, peril_noise)
+    painting = skimage.util.img_as_ubyte(painting)
+    img = Image.fromarray(painting)
+    out_base64 = to_base64(img, 'png')
 
-        return jsonify({'image': str(out_base64)})
-    return '''
-           <!doctype html>
-           <title>Make your own painting</title>
-           '''
+    now = datetime.now()
+
+    response = make_response(img)
+    response.headers.set('Content-Type', 'image/png')
+    response.headers.set('Content-Disposition', 'attachment', filename=now.strftime("%d%m%Y%H%M%S") + '.png')
+
+    return response
 
 
 if __name__ == '__main__':
