@@ -30,7 +30,7 @@ app = Flask(__name__)
 def style_transfer():
     if request.method == 'POST':
         json = request.json
-        img_id = json['img_id']
+        img_id = "eth"
         img_width = int(json['img_width'])
         pyramid_size = int(json['pyramid_size'])
         layers = json['layer']
