@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, response, make_response
+from flask import Flask, request, jsonify, make_response, send_file
 from PIL import Image
 from io import BytesIO
 import base64
@@ -26,13 +26,13 @@ def to_base64(img, format='JPEG'):
 app = Flask(__name__)
 
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/', methods=['GET'])
 def style_transfer():
     args = request.args.to_dict()
     img_id = "eth"
     img_width = int(args['img_width'])
     pyramid_size = int(args['pyramid_size'])
-    layers = args['layer'].split(',')
+    layers = [1, 2]
     peril_noise = int(args['peril_noise'])
     cmap = str(args['cmap'])
     cmap_r = int(args['cmap_r'])
@@ -42,13 +42,7 @@ def style_transfer():
     img = Image.fromarray(painting)
     out_base64 = to_base64(img, 'png')
 
-    now = datetime.now()
-
-    response = make_response(img)
-    response.headers.set('Content-Type', 'image/png')
-    response.headers.set('Content-Disposition', 'attachment', filename=now.strftime("%d%m%Y%H%M%S") + '.png')
-
-    return response
+    return jsonify({'image': str(out_base64)})
 
 
 if __name__ == '__main__':
