@@ -10,6 +10,4 @@ data/
 .ipynb_checkpoints/
 
 # Images in the root (if they exist)
-*.jpg
-*.png
 *.psd
