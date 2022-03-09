@@ -5,13 +5,12 @@ import base64
 from toshio import run_toshio
 import skimage
 from datetime import datetime
+from random import random
 
 def from_base64(base64_str):
     plain_text = str(base64_str).split(",")[1]
     byte_data = base64.b64decode(plain_text)
-    image_data = BytesIO(byte_data)
-    img = Image.open(image_data)
-    return img
+    return BytesIO(byte_data)
 
 
 def to_base64(img, format='JPEG'):
@@ -42,7 +41,7 @@ def style_transfer():
     img = Image.fromarray(painting)
     out_base64 = to_base64(img, 'png')
 
-    return jsonify({'image': str(out_base64)})
+    return send_file(from_base64(out_base64), mimetype='image/jpeg', as_attachment=False, attachment_filename='%s.jpg' % random());
 
 
 if __name__ == '__main__':
